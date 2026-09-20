@@ -56,3 +56,39 @@ export interface Parent {
   createdAt: string;
   updatedAt: string;
 }
+
+export type Subject = 'MATHEMATICS' | 'SCIENCE' | 'ENGLISH' | 'SOCIAL_SCIENCE' | 'TAMIL';
+export type ActivityType = 'LESSON' | 'QUIZ';
+export type ActivityStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type SyncStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+export interface Activity {
+  id: number;
+  title: string;
+  description: string;
+  subject: Subject;
+  activityType: ActivityType;
+  status: ActivityStatus;
+  createdByTeacherId?: number;
+  assignedClassroomId?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StudentProgress {
+  id?: number;
+  studentId: number;
+  activityId: number;
+  activityTitle?: string;
+  score: number;
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface CreateActivityPayload {
+  title: string;
+  description: string;
+  subject: Subject;
+  activityType: ActivityType;
+  assignedClassroomId?: number;
+}

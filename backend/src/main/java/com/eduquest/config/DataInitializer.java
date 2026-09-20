@@ -19,6 +19,7 @@ public class DataInitializer implements CommandLineRunner {
     private final TeacherRepository teacherRepository;
     private final ParentRepository parentRepository;
     private final StudentRepository studentRepository;
+    private final ActivityRepository activityRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(
@@ -28,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
             TeacherRepository teacherRepository,
             ParentRepository parentRepository,
             StudentRepository studentRepository,
+            ActivityRepository activityRepository,
             PasswordEncoder passwordEncoder) {
         this.schoolRepository = schoolRepository;
         this.classroomRepository = classroomRepository;
@@ -35,17 +37,19 @@ public class DataInitializer implements CommandLineRunner {
         this.teacherRepository = teacherRepository;
         this.parentRepository = parentRepository;
         this.studentRepository = studentRepository;
+        this.activityRepository = activityRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public void run(String... args) {
         if (schoolRepository.count() > 0) {
-            log.info("Database already seeded. Skipping initial data generation.");
+            log.info("Database already seeded. Checking activities seeding...");
+            seedActivitiesIfMissing();
             return;
         }
 
-        log.info("Seeding Phase 1.1 Foundation Data (Grades 6–9)...");
+        log.info("Seeding Phase 1.1 & Phase 2 Foundation Data (Grades 6–9)...");
 
         // 1. Create School
         School school = schoolRepository.save(School.builder()
@@ -91,10 +95,10 @@ public class DataInitializer implements CommandLineRunner {
                 .build());
 
         // 4. Create Teachers (1 per class)
-        createTeacherAccount("teacher_6a", "password123", "Anita Sharma", class6a);
-        createTeacherAccount("teacher_7a", "password123", "Karthikeyan R", class7a);
-        createTeacherAccount("teacher_8a", "password123", "Senthil Kumar", class8a);
-        createTeacherAccount("teacher_9a", "password123", "Priya Ramesh", class9a);
+        Teacher t6 = createTeacherAccount("teacher_6a", "password123", "Anita Sharma", class6a);
+        Teacher t7 = createTeacherAccount("teacher_7a", "password123", "Karthikeyan R", class7a);
+        Teacher t8 = createTeacherAccount("teacher_8a", "password123", "Senthil Kumar", class8a);
+        Teacher t9 = createTeacherAccount("teacher_9a", "password123", "Priya Ramesh", class9a);
 
         // 5. Seed Students & Parents for Grades 6-A, 7-A, 8-A, 9-A
         String[][] class6aData = {
@@ -133,10 +137,64 @@ public class DataInitializer implements CommandLineRunner {
         };
         seedClassroomStudentsAndParents(class9a, class9aData);
 
-        log.info("Phase 1.1 Data Seeding Complete! 1 School, 4 Classrooms (6-A, 7-A, 8-A, 9-A), 1 Admin, 4 Teachers, 20 Parents, 20 Students initialized.");
+        // 6. Seed Demo Activities
+        seedDemoActivities(t6, t7, t8, t9, class6a, class7a, class8a, class9a);
+
+        log.info("Phase 2 Data Seeding Complete!");
     }
 
-    private void createTeacherAccount(String username, String rawPassword, String fullName, Classroom classroom) {
+    private void seedActivitiesIfMissing() {
+        if (activityRepository.count() == 0) {
+            log.info("Seeding initial Phase 2 Activities...");
+            Teacher t6 = teacherRepository.findByUserAccountUsername("teacher_6a").orElse(null);
+            Teacher t7 = teacherRepository.findByUserAccountUsername("teacher_7a").orElse(null);
+            Teacher t8 = teacherRepository.findByUserAccountUsername("teacher_8a").orElse(null);
+            Teacher t9 = teacherRepository.findByUserAccountUsername("teacher_9a").orElse(null);
+
+            Classroom c6 = classroomRepository.findByName("6-A").orElse(null);
+            Classroom c7 = classroomRepository.findByName("7-A").orElse(null);
+            Classroom c8 = classroomRepository.findByName("8-A").orElse(null);
+            Classroom c9 = classroomRepository.findByName("9-A").orElse(null);
+
+            seedDemoActivities(t6, t7, t8, t9, c6, c7, c8, c9);
+        }
+    }
+
+    private void seedDemoActivities(Teacher t6, Teacher t7, Teacher t8, Teacher t9, Classroom c6, Classroom c7, Classroom c8, Classroom c9) {
+        // Grade 6 Mathematics
+        createActivity("Fractions Basics", "Introduction to proper, improper, and mixed fractions.", Subject.MATHEMATICS, ActivityType.LESSON, ActivityStatus.PUBLISHED, t6 != null ? t6.getId() : null, c6 != null ? c6.getId() : null);
+        createActivity("Fractions Quiz", "Test your knowledge on fraction operations and simplification.", Subject.MATHEMATICS, ActivityType.QUIZ, ActivityStatus.PUBLISHED, t6 != null ? t6.getId() : null, c6 != null ? c6.getId() : null);
+
+        // Grade 6 Science
+        createActivity("Living Things Around Us", "Explore habitats, adaptation, and characteristics of living organisms.", Subject.SCIENCE, ActivityType.LESSON, ActivityStatus.PUBLISHED, t6 != null ? t6.getId() : null, c6 != null ? c6.getId() : null);
+        createActivity("Plants and Animals Quiz", "Assessment on plant structures and animal classifications.", Subject.SCIENCE, ActivityType.QUIZ, ActivityStatus.PUBLISHED, t6 != null ? t6.getId() : null, c6 != null ? c6.getId() : null);
+
+        // Grade 7 Mathematics
+        createActivity("Integers Introduction", "Understanding positive and negative numbers on a number line.", Subject.MATHEMATICS, ActivityType.LESSON, ActivityStatus.PUBLISHED, t7 != null ? t7.getId() : null, c7 != null ? c7.getId() : null);
+        createActivity("Integers Quiz", "Practice addition and subtraction rules of integers.", Subject.MATHEMATICS, ActivityType.QUIZ, ActivityStatus.PUBLISHED, t7 != null ? t7.getId() : null, c7 != null ? c7.getId() : null);
+
+        // Grade 8 Science
+        createActivity("Force and Pressure", "Concepts of push, pull, atmospheric pressure, and friction.", Subject.SCIENCE, ActivityType.LESSON, ActivityStatus.PUBLISHED, t8 != null ? t8.getId() : null, c8 != null ? c8.getId() : null);
+        createActivity("Force Assessment Quiz", "Quiz on calculating pressure and identifying friction types.", Subject.SCIENCE, ActivityType.QUIZ, ActivityStatus.PUBLISHED, t8 != null ? t8.getId() : null, c8 != null ? c8.getId() : null);
+
+        // Grade 9 Science
+        createActivity("Motion and Speed", "Understanding displacement, velocity, and acceleration equations.", Subject.SCIENCE, ActivityType.LESSON, ActivityStatus.PUBLISHED, t9 != null ? t9.getId() : null, c9 != null ? c9.getId() : null);
+        createActivity("Motion Quiz", "Solve problems on speed, distance-time graphs, and uniform motion.", Subject.SCIENCE, ActivityType.QUIZ, ActivityStatus.PUBLISHED, t9 != null ? t9.getId() : null, c9 != null ? c9.getId() : null);
+    }
+
+    private void createActivity(String title, String description, Subject subject, ActivityType type, ActivityStatus status, Long teacherId, Long classroomId) {
+        activityRepository.save(Activity.builder()
+                .title(title)
+                .description(description)
+                .subject(subject)
+                .activityType(type)
+                .status(status)
+                .createdByTeacherId(teacherId)
+                .assignedClassroomId(classroomId)
+                .build());
+    }
+
+    private Teacher createTeacherAccount(String username, String rawPassword, String fullName, Classroom classroom) {
         UserAccount teacherUser = userAccountRepository.save(UserAccount.builder()
                 .username(username)
                 .password(passwordEncoder.encode(rawPassword))
@@ -144,7 +202,7 @@ public class DataInitializer implements CommandLineRunner {
                 .role(Role.TEACHER)
                 .build());
 
-        teacherRepository.save(Teacher.builder()
+        return teacherRepository.save(Teacher.builder()
                 .userAccount(teacherUser)
                 .classroom(classroom)
                 .build());

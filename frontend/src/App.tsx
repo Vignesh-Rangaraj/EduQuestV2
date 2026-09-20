@@ -8,7 +8,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { TeacherDashboard } from './pages/TeacherDashboard';
-import { StudentProfilePage } from './pages/StudentProfilePage';
+import { StudentDashboard } from './pages/StudentDashboard';
 import { ParentProfilePage } from './pages/ParentProfilePage';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -68,7 +68,7 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute allowedRoles={['STUDENT', 'TEACHER', 'SUPER_ADMIN']}>
                   <AppLayout>
-                    <StudentProfilePage />
+                    <StudentDashboard />
                   </AppLayout>
                 </ProtectedRoute>
               }
