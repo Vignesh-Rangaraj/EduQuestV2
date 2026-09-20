@@ -7,19 +7,59 @@ export interface LocalStudent {
   username: string;
   grade?: number;
   section?: string;
+  xp?: number;
+  level?: number;
   lastUpdated: string;
 }
 
-export interface LocalActivity {
+export interface LocalModule {
   id: number;
   title: string;
   description: string;
   subject: string;
+  difficultyLevel: string;
+  estimatedMinutes?: number;
+  classroomId?: number;
+  status: string;
+  createdByTeacherId?: number;
+}
+
+export interface LocalActivity {
+  id: number;
+  moduleId?: number;
+  title: string;
+  description: string;
+  subject: string;
   activityType: string;
-  published: boolean;
+  status: string;
+  displayOrder?: number;
+  prerequisiteActivityId?: number;
+  unlockType?: string;
+  unlockValue?: string;
+  xpReward?: number;
+  visibleToStudents?: boolean;
   assignedClassroomId?: number;
   createdByTeacherId?: number;
-  lastSyncedAt?: string;
+}
+
+export interface LocalLessonContent {
+  id: number;
+  activityId: number;
+  content: string;
+  estimatedMinutes?: number;
+}
+
+export interface LocalQuizQuestion {
+  id: number;
+  activityId: number;
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  explanation?: string;
+  displayOrder?: number;
 }
 
 export interface LocalProgress {
@@ -27,15 +67,27 @@ export interface LocalProgress {
   studentId: number;
   activityId: number;
   score: number;
+  bestScore?: number;
+  attemptCount?: number;
   completed: boolean;
   completedAt: string;
   synced: boolean;
 }
 
+export interface LocalModuleProgress {
+  id: string; // "studentId-moduleId"
+  studentId: number;
+  moduleId: number;
+  completedActivities: number;
+  totalActivities: number;
+  completionPercentage: number;
+  completed: boolean;
+}
+
 export interface LocalSyncQueueItem {
   id: string;
   actionType: string;
-  payload: string; // JSON payload string
+  payload: string;
   createdAt: string;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   retryCount: number;
@@ -48,17 +100,25 @@ export interface LocalSetting {
 
 export class EduQuestOfflineDB extends Dexie {
   students!: Table<LocalStudent, number>;
+  modules!: Table<LocalModule, number>;
   activities!: Table<LocalActivity, number>;
+  lessonContent!: Table<LocalLessonContent, number>;
+  quizQuestions!: Table<LocalQuizQuestion, number>;
   progress!: Table<LocalProgress, string>;
+  moduleProgress!: Table<LocalModuleProgress, string>;
   syncQueue!: Table<LocalSyncQueueItem, string>;
   settings!: Table<LocalSetting, string>;
 
   constructor() {
     super('EduQuestOfflineDB');
-    this.version(1).stores({
+    this.version(2).stores({
       students: '++id, userAccountId, username',
-      activities: 'id, subject, activityType, published, assignedClassroomId',
+      modules: 'id, subject, difficultyLevel, status, classroomId',
+      activities: 'id, moduleId, subject, activityType, status, displayOrder, prerequisiteActivityId',
+      lessonContent: 'id, activityId',
+      quizQuestions: 'id, activityId, displayOrder',
       progress: 'id, studentId, activityId, synced',
+      moduleProgress: 'id, studentId, moduleId',
       syncQueue: 'id, status, actionType, createdAt',
       settings: 'key'
     });

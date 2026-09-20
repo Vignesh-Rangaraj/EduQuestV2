@@ -25,6 +25,12 @@ public class Student {
     @JsonIgnoreProperties("students")
     private Parent parent;
 
+    @Column(name = "xp")
+    private Integer xp = 0;
+
+    @Column(name = "level")
+    private Integer level = 1;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -33,11 +39,13 @@ public class Student {
 
     public Student() {}
 
-    public Student(Long id, UserAccount userAccount, Classroom classroom, Parent parent, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Student(Long id, UserAccount userAccount, Classroom classroom, Parent parent, Integer xp, Integer level, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.userAccount = userAccount;
         this.classroom = classroom;
         this.parent = parent;
+        this.xp = xp != null ? xp : 0;
+        this.level = level != null ? level : 1;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -47,6 +55,8 @@ public class Student {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
+        if (this.xp == null) this.xp = 0;
+        if (this.level == null) this.level = 1;
     }
 
     @PreUpdate
@@ -66,6 +76,12 @@ public class Student {
     public Parent getParent() { return parent; }
     public void setParent(Parent parent) { this.parent = parent; }
 
+    public Integer getXp() { return xp != null ? xp : 0; }
+    public void setXp(Integer xp) { this.xp = xp; }
+
+    public Integer getLevel() { return level != null ? level : 1; }
+    public void setLevel(Integer level) { this.level = level; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -81,6 +97,8 @@ public class Student {
         private UserAccount userAccount;
         private Classroom classroom;
         private Parent parent;
+        private Integer xp = 0;
+        private Integer level = 1;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -88,11 +106,13 @@ public class Student {
         public StudentBuilder userAccount(UserAccount userAccount) { this.userAccount = userAccount; return this; }
         public StudentBuilder classroom(Classroom classroom) { this.classroom = classroom; return this; }
         public StudentBuilder parent(Parent parent) { this.parent = parent; return this; }
+        public StudentBuilder xp(Integer xp) { this.xp = xp; return this; }
+        public StudentBuilder level(Integer level) { this.level = level; return this; }
         public StudentBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public StudentBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public Student build() {
-            return new Student(id, userAccount, classroom, parent, createdAt, updatedAt);
+            return new Student(id, userAccount, classroom, parent, xp, level, createdAt, updatedAt);
         }
     }
 }

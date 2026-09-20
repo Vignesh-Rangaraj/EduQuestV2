@@ -11,12 +11,14 @@ public class StudentDto {
     private String classroomName;
     private Long parentId;
     private String parentFullName;
+    private Integer xp;
+    private Integer level;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public StudentDto() {}
 
-    public StudentDto(Long id, Long userId, String username, String fullName, Long classroomId, String classroomName, Long parentId, String parentFullName, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public StudentDto(Long id, Long userId, String username, String fullName, Long classroomId, String classroomName, Long parentId, String parentFullName, Integer xp, Integer level, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
         this.username = username;
@@ -25,6 +27,8 @@ public class StudentDto {
         this.classroomName = classroomName;
         this.parentId = parentId;
         this.parentFullName = parentFullName;
+        this.xp = xp;
+        this.level = level;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -53,6 +57,12 @@ public class StudentDto {
     public String getParentFullName() { return parentFullName; }
     public void setParentFullName(String parentFullName) { this.parentFullName = parentFullName; }
 
+    public Integer getXp() { return xp; }
+    public void setXp(Integer xp) { this.xp = xp; }
+
+    public Integer getLevel() { return level; }
+    public void setLevel(Integer level) { this.level = level; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -72,6 +82,8 @@ public class StudentDto {
         private String classroomName;
         private Long parentId;
         private String parentFullName;
+        private Integer xp;
+        private Integer level;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -83,11 +95,13 @@ public class StudentDto {
         public StudentDtoBuilder classroomName(String classroomName) { this.classroomName = classroomName; return this; }
         public StudentDtoBuilder parentId(Long parentId) { this.parentId = parentId; return this; }
         public StudentDtoBuilder parentFullName(String parentFullName) { this.parentFullName = parentFullName; return this; }
+        public StudentDtoBuilder xp(Integer xp) { this.xp = xp; return this; }
+        public StudentDtoBuilder level(Integer level) { this.level = level; return this; }
         public StudentDtoBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public StudentDtoBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public StudentDto build() {
-            return new StudentDto(id, userId, username, fullName, classroomId, classroomName, parentId, parentFullName, createdAt, updatedAt);
+            return new StudentDto(id, userId, username, fullName, classroomId, classroomName, parentId, parentFullName, xp, level, createdAt, updatedAt);
         }
     }
 }

@@ -36,6 +36,11 @@ public class ActivityService {
                 .status(ActivityStatus.DRAFT)
                 .createdByTeacherId(teacherId)
                 .assignedClassroomId(request.getAssignedClassroomId())
+                .moduleId(request.getModuleId())
+                .xpReward(request.getXpReward() != null ? request.getXpReward() : 10)
+                .prerequisiteActivityId(request.getPrerequisiteActivityId())
+                .unlockType(request.getUnlockType())
+                .unlockValue(request.getUnlockValue())
                 .build();
         Activity saved = activityRepository.save(activity);
         return ActivityDto.fromEntity(saved);
@@ -55,6 +60,11 @@ public class ActivityService {
         activity.setSubject(request.getSubject());
         activity.setActivityType(request.getActivityType());
         activity.setAssignedClassroomId(request.getAssignedClassroomId());
+        if (request.getModuleId() != null) activity.setModuleId(request.getModuleId());
+        if (request.getXpReward() != null) activity.setXpReward(request.getXpReward());
+        if (request.getPrerequisiteActivityId() != null) activity.setPrerequisiteActivityId(request.getPrerequisiteActivityId());
+        if (request.getUnlockType() != null) activity.setUnlockType(request.getUnlockType());
+        if (request.getUnlockValue() != null) activity.setUnlockValue(request.getUnlockValue());
         activity.setUpdatedAt(LocalDateTime.now());
 
         Activity saved = activityRepository.save(activity);

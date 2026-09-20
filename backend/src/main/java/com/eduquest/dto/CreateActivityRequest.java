@@ -2,6 +2,7 @@ package com.eduquest.dto;
 
 import com.eduquest.domain.ActivityType;
 import com.eduquest.domain.Subject;
+import com.eduquest.domain.UnlockType;
 
 public class CreateActivityRequest {
 
@@ -10,6 +11,11 @@ public class CreateActivityRequest {
     private Subject subject;
     private ActivityType activityType;
     private Long assignedClassroomId;
+    private Long moduleId;
+    private Integer xpReward;
+    private Long prerequisiteActivityId;
+    private UnlockType unlockType;
+    private String unlockValue;
 
     public CreateActivityRequest() {}
 
@@ -35,4 +41,19 @@ public class CreateActivityRequest {
 
     public Long getAssignedClassroomId() { return assignedClassroomId; }
     public void setAssignedClassroomId(Long assignedClassroomId) { this.assignedClassroomId = assignedClassroomId; }
+
+    public Long getModuleId() { return moduleId; }
+    public void setModuleId(Long moduleId) { this.moduleId = moduleId; }
+
+    public Integer getXpReward() { return xpReward; }
+    public void setXpReward(Integer xpReward) { this.xpReward = xpReward; }
+
+    public Long getPrerequisiteActivityId() { return prerequisiteActivityId; }
+    public void setPrerequisiteActivityId(Long prerequisiteActivityId) { this.prerequisiteActivityId = prerequisiteActivityId; }
+
+    public UnlockType getUnlockType() { return unlockType; }
+    public void setUnlockType(UnlockType unlockType) { this.unlockType = unlockType; }
+
+    public String getUnlockValue() { return unlockValue; }
+    public void setUnlockValue(String unlockValue) { this.unlockValue = unlockValue; }
 }

@@ -2,6 +2,7 @@ import api from './api';
 import { Activity, CreateActivityPayload } from '../types';
 import { networkService } from '../offline/networkService';
 import { offlineActivityRepository } from '../offline/offlineActivityRepository';
+import { LocalActivity } from '../offline/db';
 
 export const activityService = {
   // Teacher Management API calls
@@ -38,13 +39,15 @@ export const activityService = {
         const activities = response.data;
 
         // Cache in Dexie IndexedDB
-        const localActivities = activities.map((act) => ({
+        const localActivities: LocalActivity[] = activities.map((act) => ({
           id: act.id,
+          moduleId: act.moduleId,
           title: act.title,
           description: act.description,
           subject: act.subject,
           activityType: act.activityType,
-          published: act.status === 'PUBLISHED',
+          status: act.status || 'PUBLISHED',
+          xpReward: act.xpReward,
           assignedClassroomId: act.assignedClassroomId,
           createdByTeacherId: act.createdByTeacherId
         }));
@@ -64,11 +67,13 @@ export const activityService = {
     const local = await offlineActivityRepository.getPublishedActivities();
     return local.map((item) => ({
       id: item.id,
+      moduleId: item.moduleId,
       title: item.title,
       description: item.description,
       subject: item.subject as any,
       activityType: item.activityType as any,
-      status: 'PUBLISHED',
+      status: (item.status as any) || 'PUBLISHED',
+      xpReward: item.xpReward,
       createdByTeacherId: item.createdByTeacherId,
       assignedClassroomId: item.assignedClassroomId
     }));

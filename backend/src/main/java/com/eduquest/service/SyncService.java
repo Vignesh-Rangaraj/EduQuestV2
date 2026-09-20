@@ -1,11 +1,13 @@
 package com.eduquest.service;
 
-import com.eduquest.domain.SyncQueue;
-import com.eduquest.domain.SyncStatus;
+import com.eduquest.domain.*;
 import com.eduquest.dto.SyncItemDto;
 import com.eduquest.dto.SyncRequestDto;
 import com.eduquest.dto.SyncResponse;
+import com.eduquest.repository.ActivityRepository;
 import com.eduquest.repository.SyncQueueRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,10 +22,25 @@ public class SyncService {
 
     private final SyncQueueRepository syncQueueRepository;
     private final StudentProgressService progressService;
+    private final ActivityRepository activityRepository;
+    private final XpService xpService;
+    private final StudentModuleProgressService moduleProgressService;
+    private final ActivityCompletionService completionService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public SyncService(SyncQueueRepository syncQueueRepository, StudentProgressService progressService) {
+    public SyncService(
+            SyncQueueRepository syncQueueRepository,
+            StudentProgressService progressService,
+            ActivityRepository activityRepository,
+            XpService xpService,
+            StudentModuleProgressService moduleProgressService,
+            ActivityCompletionService completionService) {
         this.syncQueueRepository = syncQueueRepository;
         this.progressService = progressService;
+        this.activityRepository = activityRepository;
+        this.xpService = xpService;
+        this.moduleProgressService = moduleProgressService;
+        this.completionService = completionService;
     }
 
     @Transactional
@@ -39,11 +56,10 @@ public class SyncService {
         for (SyncItemDto item : request.getItems()) {
             String clientItemId = item.getId();
 
-            // Deduplication Check for Idempotency
+            // Idempotency check: Client queue item ID deduplication
             if (clientItemId != null && !clientItemId.trim().isEmpty()) {
                 Optional<SyncQueue> existingEntry = syncQueueRepository.findFirstByClientQueueItemId(clientItemId);
                 if (existingEntry.isPresent() && existingEntry.get().getStatus() == SyncStatus.COMPLETED) {
-                    // Item was already successfully processed in a previous sync request retry
                     syncedItems.add(clientItemId);
                     continue;
                 }
@@ -62,11 +78,38 @@ public class SyncService {
                 if ("COMPLETE_ACTIVITY".equalsIgnoreCase(item.getActionType()) || "UPDATE_PROGRESS".equalsIgnoreCase(item.getActionType())) {
                     Long studentId = request.getStudentId() != null ? request.getStudentId() : item.getStudentId();
                     Long activityId = item.getActivityId();
-                    Integer score = item.getScore() != null ? item.getScore() : 100;
-                    LocalDateTime completedAt = parseDateTime(item.getCompletedAt());
+                    Integer score = item.getScore();
+                    String completedAtStr = item.getCompletedAt();
+
+                    // Parse JSON payload if fields missing at top level
+                    if ((activityId == null || score == null || studentId == null) && item.getPayload() != null) {
+                        try {
+                            JsonNode json = objectMapper.readTree(item.getPayload());
+                            if (studentId == null && json.has("studentId")) studentId = json.get("studentId").asLong();
+                            if (activityId == null && json.has("activityId")) activityId = json.get("activityId").asLong();
+                            if (score == null && json.has("score")) score = json.get("score").asInt();
+                            if (completedAtStr == null && json.has("completedAt")) completedAtStr = json.get("completedAt").asText();
+                        } catch (Exception ignored) {}
+                    }
+
+                    if (score == null) score = 100;
+                    LocalDateTime completedAt = parseDateTime(completedAtStr);
 
                     if (studentId != null && activityId != null) {
-                        progressService.saveProgress(studentId, activityId, score, true, completedAt);
+                        Activity activity = activityRepository.findById(activityId).orElse(null);
+                        if (activity != null) {
+                            boolean isCompleted = completionService.isActivityCompleted(activity, score, true);
+                            progressService.saveProgress(studentId, activityId, score, isCompleted, completedAt);
+
+                            if (isCompleted) {
+                                int xpReward = activity.getXpReward() != null ? activity.getXpReward() : 10;
+                                xpService.awardXp(studentId, activityId, xpReward, "ACTIVITY_COMPLETION");
+
+                                if (activity.getModuleId() != null) {
+                                    moduleProgressService.updateModuleProgress(studentId, activity.getModuleId());
+                                }
+                            }
+                        }
                     }
                 }
 

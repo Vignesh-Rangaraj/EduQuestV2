@@ -196,6 +196,8 @@ public class AdminService {
                 .classroomName(student.getClassroom() != null ? student.getClassroom().getName() : "Unassigned")
                 .parentId(student.getParent() != null ? student.getParent().getId() : null)
                 .parentFullName(student.getParent() != null ? student.getParent().getUserAccount().getFullName() : "Unassigned")
+                .xp(student.getXp() != null ? student.getXp() : 0)
+                .level(student.getLevel() != null ? student.getLevel() : 1)
                 .createdAt(student.getCreatedAt())
                 .updatedAt(student.getUpdatedAt())
                 .build();

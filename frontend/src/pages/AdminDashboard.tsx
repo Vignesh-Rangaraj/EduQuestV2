@@ -1,13 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../services/adminService';
-import { Teacher, Student, Parent, Classroom } from '../types';
-import { UserPlus, Link, Users, GraduationCap, School as SchoolIcon, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
+import { curriculumService } from '../services/curriculumService';
+import { Teacher, Student, Parent, Classroom, CurriculumOverview } from '../types';
+import {
+  UserPlus,
+  Link,
+  Users,
+  GraduationCap,
+  School as SchoolIcon,
+  Shield,
+  CheckCircle2,
+  AlertCircle,
+  BookOpen,
+  Layers,
+  Award,
+  BarChart3
+} from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [parents, setParents] = useState<Parent[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [curriculum, setCurriculum] = useState<CurriculumOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -33,16 +48,18 @@ export const AdminDashboard: React.FC = () => {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [tData, sData, pData, cData] = await Promise.all([
+      const [tData, sData, pData, cData, currData] = await Promise.all([
         adminService.getAllTeachers(),
         adminService.getAllStudents(),
         adminService.getAllParents(),
         adminService.getAllClassrooms(),
+        curriculumService.getCurriculumOverview().catch(() => null)
       ]);
       setTeachers(tData);
       setStudents(sData);
       setParents(pData);
       setClassrooms(cData);
+      setCurriculum(currData);
     } catch (err) {
       console.error('Failed to load admin data', err);
     } finally {
@@ -122,7 +139,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Super Admin Dashboard</h1>
-            <p className="text-sky-100 text-sm mt-0.5">EduQuest Demo School • Management Console</p>
+            <p className="text-sky-100 text-sm mt-0.5">EduQuest Demo School • System Management Console</p>
           </div>
         </div>
       </div>
@@ -137,6 +154,38 @@ export const AdminDashboard: React.FC = () => {
         >
           {message.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
           <span>{message.text}</span>
+        </div>
+      )}
+
+      {/* Curriculum & Gamification Overview Metrics */}
+      {curriculum && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            Curriculum & Gamification Infrastructure Overview
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Subjects</p>
+              <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{curriculum.totalSubjects}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Total Modules</p>
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{curriculum.totalModules}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Published Modules</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{curriculum.publishedModules}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Total Activities</p>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{curriculum.totalActivities}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Published Activities</p>
+              <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">{curriculum.publishedActivities}</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -390,6 +439,7 @@ export const AdminDashboard: React.FC = () => {
                   <th className="py-3 px-4">Student Name</th>
                   <th className="py-3 px-4">Username</th>
                   <th className="py-3 px-4">Classroom</th>
+                  <th className="py-3 px-4">Level & XP</th>
                   <th className="py-3 px-4">Linked Parent</th>
                   <th className="py-3 px-4">Audit Timestamp</th>
                 </tr>
@@ -403,6 +453,9 @@ export const AdminDashboard: React.FC = () => {
                       <span className="px-2.5 py-0.5 text-xs font-semibold bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 rounded-full">
                         {s.classroomName}
                       </span>
+                    </td>
+                    <td className="py-3 px-4 font-bold text-amber-600 dark:text-amber-400 text-xs">
+                      Lvl {s.level || 1} • {s.xp || 0} XP
                     </td>
                     <td className="py-3 px-4 font-medium text-emerald-600 dark:text-emerald-400">{s.parentFullName}</td>
                     <td className="py-3 px-4 text-xs text-gray-400">{new Date(s.createdAt).toLocaleString()}</td>
