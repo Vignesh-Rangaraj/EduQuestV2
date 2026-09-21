@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { teacherService } from '../services/teacherService';
 import { activityService } from '../services/activityService';
 import { moduleService } from '../services/moduleService';
+import { gamificationService } from '../services/gamificationService';
+import { ChallengeEditModal } from '../components/gamification/ChallengeEditModal';
 import {
   Teacher,
   Student,
@@ -12,7 +14,8 @@ import {
   Module,
   DifficultyLevel,
   LessonContent,
-  QuizQuestion
+  QuizQuestion,
+  TeacherChallengeItem
 } from '../types';
 import {
   GraduationCap,
@@ -29,7 +32,11 @@ import {
   Layers,
   HelpCircle,
   AlertTriangle,
-  FileText
+  FileText,
+  Trophy,
+  Trash2,
+  RotateCcw,
+  Award
 } from 'lucide-react';
 
 export const TeacherDashboard: React.FC = () => {
@@ -41,8 +48,14 @@ export const TeacherDashboard: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Tab state: 'MODULES' | 'ACTIVITIES' | 'ROSTER'
-  const [activeTab, setActiveTab] = useState<'MODULES' | 'ACTIVITIES' | 'ROSTER'>('MODULES');
+  // Tab state: 'MODULES' | 'ACTIVITIES' | 'ROSTER' | 'CHALLENGES'
+  const [activeTab, setActiveTab] = useState<'MODULES' | 'ACTIVITIES' | 'ROSTER' | 'CHALLENGES'>('MODULES');
+
+  // Challenge state
+  const [challenges, setChallenges] = useState<TeacherChallengeItem[]>([]);
+  const [challengeStats, setChallengeStats] = useState<any>(null);
+  const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [editingChallenge, setEditingChallenge] = useState<TeacherChallengeItem | null>(null);
 
   // Activity Modal / Form state
   const [showCreateActivityModal, setShowCreateActivityModal] = useState(false);
@@ -82,20 +95,103 @@ export const TeacherDashboard: React.FC = () => {
   const loadTeacherData = async () => {
     setLoading(true);
     try {
-      const [pData, sData, actData, modData] = await Promise.all([
+      const [pData, sData, actData, modData, chalData, chalStats] = await Promise.all([
         teacherService.getProfile(),
         teacherService.getAssignedStudents(),
         activityService.getTeacherActivities(),
-        moduleService.getTeacherModules().catch(() => [])
+        moduleService.getTeacherModules().catch(() => []),
+        gamificationService.getMyTeacherChallenges().catch(() => []),
+        gamificationService.getTeacherChallengeStats().catch(() => null)
       ]);
       setProfile(pData);
       setStudents(sData);
       setActivities(actData);
       setModules(modData);
+      setChallenges(chalData);
+      setChallengeStats(chalStats);
     } catch (err) {
       console.error('Failed to load teacher data', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenCreateChallenge = () => {
+    setEditingChallenge(null);
+    setShowChallengeModal(true);
+  };
+
+  const handleOpenEditChallenge = (c: TeacherChallengeItem) => {
+    setEditingChallenge(c);
+    setShowChallengeModal(true);
+  };
+
+  const handleSaveChallenge = async (payload: Partial<TeacherChallengeItem>) => {
+    setErrorMessage(null);
+    try {
+      if (payload.id) {
+        await gamificationService.updateTeacherChallenge(payload.id, payload);
+        setSuccessMessage('Challenge updated successfully!');
+      } else {
+        await gamificationService.createTeacherChallenge(payload);
+        setSuccessMessage('Challenge created successfully!');
+      }
+      setShowChallengeModal(false);
+      const [updatedChal, updatedStats] = await Promise.all([
+        gamificationService.getMyTeacherChallenges(),
+        gamificationService.getTeacherChallengeStats()
+      ]);
+      setChallenges(updatedChal);
+      setChallengeStats(updatedStats);
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.message || 'Failed to save challenge');
+      throw err;
+    }
+  };
+
+  const handleArchiveChallengeItem = async (id: number) => {
+    try {
+      await gamificationService.archiveTeacherChallenge(id);
+      setSuccessMessage('Challenge archived successfully!');
+      const [updatedChal, updatedStats] = await Promise.all([
+        gamificationService.getMyTeacherChallenges(),
+        gamificationService.getTeacherChallengeStats()
+      ]);
+      setChallenges(updatedChal);
+      setChallengeStats(updatedStats);
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.message || 'Failed to archive challenge.');
+    }
+  };
+
+  const handleRestoreChallengeItem = async (id: number) => {
+    try {
+      await gamificationService.restoreTeacherChallenge(id);
+      setSuccessMessage('Challenge restored successfully!');
+      const [updatedChal, updatedStats] = await Promise.all([
+        gamificationService.getMyTeacherChallenges(),
+        gamificationService.getTeacherChallengeStats()
+      ]);
+      setChallenges(updatedChal);
+      setChallengeStats(updatedStats);
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.message || 'Failed to restore challenge.');
+    }
+  };
+
+  const handleDeleteChallengeItem = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this challenge?')) return;
+    try {
+      const res = await gamificationService.deleteTeacherChallenge(id);
+      setSuccessMessage(res.message || 'Challenge deleted successfully!');
+      const [updatedChal, updatedStats] = await Promise.all([
+        gamificationService.getMyTeacherChallenges(),
+        gamificationService.getTeacherChallengeStats()
+      ]);
+      setChallenges(updatedChal);
+      setChallengeStats(updatedStats);
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.message || 'Failed to delete challenge.');
     }
   };
 
@@ -422,6 +518,17 @@ export const TeacherDashboard: React.FC = () => {
           <Users className="w-4 h-4" />
           Student Roster ({students.length})
         </button>
+        <button
+          onClick={() => setActiveTab('CHALLENGES')}
+          className={`py-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'CHALLENGES'
+              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <Trophy className="w-4 h-4" />
+          Classroom Challenges ({challenges.length})
+        </button>
       </div>
 
       {/* TAB 1: MODULES MANAGEMENT */}
@@ -688,6 +795,167 @@ export const TeacherDashboard: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: CLASSROOM CHALLENGES MANAGEMENT */}
+      {activeTab === 'CHALLENGES' && (
+        <div className="space-y-6">
+          {/* Challenge Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center gap-3">
+              <div className="p-2.5 bg-amber-100 dark:bg-amber-950 text-amber-600 rounded-lg">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase">Total Challenges</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{challengeStats?.totalChallenges ?? challenges.length}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center gap-3">
+              <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 rounded-lg">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase">Active Challenges</p>
+                <p className="text-xl font-bold text-emerald-600">{challengeStats?.activeChallenges ?? challenges.filter(c => !c.archived).length}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center gap-3">
+              <div className="p-2.5 bg-gray-100 dark:bg-gray-700 text-gray-600 rounded-lg">
+                <Archive className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase">Archived</p>
+                <p className="text-xl font-bold text-gray-700 dark:text-gray-300">{challengeStats?.archivedChallenges ?? challenges.filter(c => c.archived).length}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-600 rounded-lg">
+                <Award className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase">Completed Entries</p>
+                <p className="text-xl font-bold text-indigo-600">{challengeStats?.completedCount ?? 0}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                Classroom Gamification Challenges
+              </h2>
+              <button
+                onClick={handleOpenCreateChallenge}
+                className="flex items-center space-x-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Challenge</span>
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 uppercase">
+                    <th className="py-3 px-4">Challenge Name</th>
+                    <th className="py-3 px-4">Target Type & Goal</th>
+                    <th className="py-3 px-4">Rewards</th>
+                    <th className="py-3 px-4">Duration</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50 text-sm">
+                  {challenges.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-gray-400">
+                        No classroom challenges created yet. Click "Create Challenge" above.
+                      </td>
+                    </tr>
+                  ) : (
+                    challenges.map((c) => (
+                      <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                        <td className="py-3.5 px-4 font-semibold text-gray-900 dark:text-white">
+                          <div>{c.title}</div>
+                          <div className="text-xs text-gray-500 font-normal">{c.description}</div>
+                        </td>
+                        <td className="py-3.5 px-4 text-xs font-mono">
+                          <span className="px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-semibold">
+                            {c.targetType}: {c.targetValue}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-xs">
+                          <span className="font-bold text-amber-600">{c.xpReward} XP</span>
+                          <span className="mx-1 text-gray-400">•</span>
+                          <span className="font-bold text-yellow-600">{c.coinReward} Coins</span>
+                          {c.badgeRewardCode && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-semibold text-[10px]">
+                              🏷️ {c.badgeRewardCode}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-xs text-gray-500">
+                          {c.startDate} to {c.endDate}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {c.archived ? (
+                            <span className="px-2 py-0.5 text-xs font-bold bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-full">
+                              Archived
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-full">
+                              Active
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleOpenEditChallenge(c)}
+                              className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-gray-700 rounded-lg"
+                              title="Edit Challenge"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            {c.archived ? (
+                              <button
+                                onClick={() => handleRestoreChallengeItem(c.id)}
+                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 rounded-lg"
+                                title="Restore Challenge"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleArchiveChallengeItem(c.id)}
+                                className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 rounded-lg"
+                                title="Archive Challenge"
+                              >
+                                <Archive className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteChallengeItem(c.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg"
+                              title="Delete Challenge"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1078,6 +1346,16 @@ export const TeacherDashboard: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* EDIT/CREATE CHALLENGE MODAL */}
+      {showChallengeModal && (
+        <ChallengeEditModal
+          challenge={editingChallenge}
+          classroomId={profile?.classroomId || 1}
+          onSave={handleSaveChallenge}
+          onClose={() => setShowChallengeModal(false)}
+        />
       )}
     </div>
   );

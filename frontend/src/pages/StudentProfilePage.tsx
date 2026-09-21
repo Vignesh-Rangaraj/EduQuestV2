@@ -1,17 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { studentService } from '../services/studentService';
-import { Student } from '../types';
-import { UserCheck, School, GraduationCap, Users, Calendar, ShieldCheck } from 'lucide-react';
+import { gamificationService } from '../services/gamificationService';
+import { Student, GamificationSummary, StudentBadgeItem } from '../types';
+import { LevelProgressBar } from '../components/gamification/LevelProgressBar';
+import { StreakWidget } from '../components/gamification/StreakWidget';
+import { CoinWalletBadge } from '../components/gamification/CoinWalletBadge';
+import { BadgeGallery } from '../components/gamification/BadgeGallery';
+import { UserCheck, GraduationCap, Users, Calendar, ShieldCheck } from 'lucide-react';
 
 export const StudentProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<Student | null>(null);
+  const [gamification, setGamification] = useState<GamificationSummary | null>(null);
+  const [badges, setBadges] = useState<StudentBadgeItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    studentService.getProfile()
-      .then(setProfile)
-      .catch((err) => console.error('Failed to load student profile', err))
-      .finally(() => setLoading(false));
+    const fetchData = async () => {
+      try {
+        const studentData = await studentService.getProfile();
+        setProfile(studentData);
+        const sum = await gamificationService.getSummary();
+        setGamification(sum);
+        setBadges(sum.badges || []);
+      } catch (err) {
+        console.error('Failed to load student profile', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   if (loading) {
@@ -22,10 +39,16 @@ export const StudentProfilePage: React.FC = () => {
     );
   }
 
+  const currentXp = gamification?.xp || profile?.xp || 0;
+  const currentLevel = gamification?.level || profile?.level || 1;
+  const currentStreak = gamification?.currentStreak || 0;
+  const highestStreak = gamification?.highestStreak || 0;
+  const coins = gamification?.coins || 0;
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       {/* Student Banner */}
-      <div className="bg-gradient-to-r from-sky-600 to-indigo-700 text-white p-6 rounded-2xl shadow-md">
+      <div className="bg-gradient-to-r from-sky-600 to-indigo-700 text-white p-6 rounded-2xl shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-sm">
             <UserCheck className="w-10 h-10" />
@@ -35,7 +58,18 @@ export const StudentProfilePage: React.FC = () => {
             <p className="text-sky-100 text-sm mt-0.5">Student Account • @{profile?.username}</p>
           </div>
         </div>
+
+        <div className="flex items-center gap-3">
+          <StreakWidget currentStreak={currentStreak} highestStreak={highestStreak} />
+          <CoinWalletBadge coins={coins} />
+        </div>
       </div>
+
+      {/* Level Progression */}
+      <LevelProgressBar level={currentLevel} xp={currentXp} levelProgress={gamification?.levelProgress} />
+
+      {/* Badge & Achievement Gallery */}
+      <BadgeGallery unlockedBadges={badges} />
 
       {/* Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

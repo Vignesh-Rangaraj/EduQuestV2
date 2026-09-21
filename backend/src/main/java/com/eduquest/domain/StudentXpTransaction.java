@@ -4,12 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-    name = "student_xp_transactions",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_student_activity_xp", columnNames = {"student_id", "activity_id"})
-    }
-)
+@Table(name = "student_xp_transactions")
 public class StudentXpTransaction {
 
     @Id
@@ -19,7 +14,7 @@ public class StudentXpTransaction {
     @Column(name = "student_id", nullable = false)
     private Long studentId;
 
-    @Column(name = "activity_id", nullable = false)
+    @Column(name = "activity_id")
     private Long activityId;
 
     @Column(name = "xp_awarded", nullable = false)

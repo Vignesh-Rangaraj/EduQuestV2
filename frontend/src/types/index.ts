@@ -311,3 +311,101 @@ export interface ContinueLearning {
   progressPercentage: number;
   nextLessonId?: number | null;
 }
+
+// Phase 7 Gamification Interfaces
+export interface LevelProgress {
+  level: number;
+  currentXp: number;
+  currentLevelThreshold: number;
+  nextLevelThreshold: number;
+  xpInCurrentLevel: number;
+  xpNeededForNextLevel: number;
+  progressPercent: number;
+}
+
+export interface StudentBadgeItem {
+  id: number;
+  studentId: number;
+  badgeCode: string;
+  badgeName: string;
+  earnedAt: string;
+}
+
+export interface GamificationSummary {
+  studentId: number;
+  xp: number;
+  level: number;
+  levelProgress: LevelProgress;
+  coins: number;
+  currentStreak: number;
+  highestStreak: number;
+  lastActiveDate: string | null;
+  badgeCount: number;
+  badges: StudentBadgeItem[];
+}
+
+export interface CoinTransaction {
+  id: number;
+  studentId: number;
+  coinsAwarded: number;
+  reason: string;
+  createdAt: string;
+}
+
+export interface DailyMission {
+  id: number;
+  studentId: number;
+  missionKey: string;
+  title: string;
+  description: string;
+  currentProgress: number;
+  targetCount: number;
+  completed: boolean;
+  claimed: boolean;
+  missionDate: string;
+  xpReward: number;
+  coinReward: number;
+}
+
+export interface TeacherChallengeItem {
+  id: number;
+  classroomId: number;
+  teacherId: number;
+  title: string;
+  description: string;
+  targetType: 'LESSONS_COMPLETED' | 'QUIZ_SCORE' | 'XP_EARNED' | 'STREAK_DAYS';
+  targetValue: number;
+  xpReward: number;
+  coinReward: number;
+  badgeRewardCode?: string;
+  startDate: string;
+  endDate: string;
+  archived?: boolean;
+}
+
+export interface StudentChallengeProgressItem {
+  id: number;
+  challengeId: number;
+  studentId: number;
+  currentProgress: number;
+  completed: boolean;
+  claimed: boolean;
+  completedAt?: string;
+}
+
+export interface TeacherChallengeWrapper {
+  challenge: TeacherChallengeItem;
+  studentProgress: StudentChallengeProgressItem;
+}
+
+export interface JourneyStage {
+  stageIndex: number;
+  name: string;
+  icon: string;
+  minXp: number;
+  maxXp: number;
+  isUnlocked: boolean;
+  isCurrent: boolean;
+  progressPercent: number;
+}
+

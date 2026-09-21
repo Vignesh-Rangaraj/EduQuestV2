@@ -3,17 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { studentService } from '../services/studentService';
 import { moduleService } from '../services/moduleService';
 import { leaderboardService } from '../services/leaderboardService';
+import { gamificationService } from '../services/gamificationService';
 import { offlineProgressRepository } from '../offline/offlineProgressRepository';
 import { syncService } from '../offline/syncService';
 import { ContinueLearningCard } from '../components/student/ContinueLearningCard';
+import { LevelProgressBar } from '../components/gamification/LevelProgressBar';
+import { StreakWidget } from '../components/gamification/StreakWidget';
+import { CoinWalletBadge } from '../components/gamification/CoinWalletBadge';
+import { DailyMissionsWidget } from '../components/gamification/DailyMissionsWidget';
+import { JourneyMap } from '../components/gamification/JourneyMap';
+import { MiniGamePlayer } from '../components/gamification/MiniGamePlayer';
+
 import {
   Student,
   Module,
   Activity,
-  LessonContent,
   QuizQuestion,
   LeaderboardEntry,
-  StudentModuleProgress
+  GamificationSummary,
+  DailyMission,
+  JourneyStage
 } from '../types';
 import { NetworkStatusBadge } from '../components/NetworkStatusBadge';
 import {
@@ -21,23 +30,21 @@ import {
   BookOpen,
   CheckCircle,
   Play,
-  FileText,
-  Award,
   Trophy,
   Lock,
   Clock,
-  Sparkles,
   Gamepad2,
   X,
   HelpCircle,
-  Zap,
-  TrendingUp,
   Circle
 } from 'lucide-react';
 
 export const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Student | null>(null);
+  const [gamification, setGamification] = useState<GamificationSummary | null>(null);
+  const [dailyMissions, setDailyMissions] = useState<DailyMission[]>([]);
+  const [journeyStages, setJourneyStages] = useState<JourneyStage[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [moduleActivities, setModuleActivities] = useState<Activity[]>([]);
@@ -52,6 +59,21 @@ export const StudentDashboard: React.FC = () => {
   const [quizResult, setQuizResult] = useState<{ score: number; passed: boolean; correct: number; total: number } | null>(null);
   const [activeGamePreview, setActiveGamePreview] = useState<Activity | null>(null);
   const [submittingQuiz, setSubmittingQuiz] = useState(false);
+
+  const loadGamificationData = async () => {
+    try {
+      const [sum, missions, journey] = await Promise.all([
+        gamificationService.getSummary(),
+        gamificationService.getDailyMissions(),
+        gamificationService.getJourneyMap()
+      ]);
+      setGamification(sum);
+      setDailyMissions(missions);
+      setJourneyStages(journey);
+    } catch (e) {
+      console.error('Failed to load gamification summary', e);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -87,6 +109,8 @@ export const StudentDashboard: React.FC = () => {
         });
         setProgressMap(map);
       }
+
+      await loadGamificationData();
     } catch (err) {
       console.error('Error loading student dashboard data', err);
     } finally {
@@ -112,6 +136,7 @@ export const StudentDashboard: React.FC = () => {
           setProgressMap(map);
         });
         leaderboardService.getLeaderboard(leaderboardScope).then(setLeaderboard).catch(() => {});
+        loadGamificationData();
       }
     });
 
@@ -195,7 +220,7 @@ export const StudentDashboard: React.FC = () => {
       }));
 
       const xpReward = act.xpReward || 20;
-      setProfile((prev) => prev ? { ...prev, xp: (prev.xp || 0) + xpReward, level: Math.floor(((prev.xp || 0) + xpReward) / 100) + 1 } : null);
+      setProfile((prev) => prev ? { ...prev, xp: (prev.xp || 0) + xpReward } : null);
 
       await syncService.enqueueAction('COMPLETE_ACTIVITY', {
         studentId: profile.id,
@@ -204,6 +229,8 @@ export const StudentDashboard: React.FC = () => {
         userAnswers: quizAnswers,
         completedAt
       });
+
+      await loadGamificationData();
     }
 
     setSubmittingQuiz(false);
@@ -217,21 +244,28 @@ export const StudentDashboard: React.FC = () => {
     );
   }
 
-  const currentXp = profile?.xp || 0;
-  const currentLevel = profile?.level || Math.floor(currentXp / 100) + 1;
+  const currentXp = gamification?.xp || profile?.xp || 0;
+  const currentLevel = gamification?.level || profile?.level || 1;
+  const currentStreak = gamification?.currentStreak || 0;
+  const highestStreak = gamification?.highestStreak || 0;
+  const coins = gamification?.coins || 0;
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Top Navigation & Status Bar */}
+      {/* Top Navigation & Status Bar with Streak and Coins */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Student Learning Portal</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400">Classroom: {profile?.classroomName} • EduQuest Demo School</p>
         </div>
-        <NetworkStatusBadge />
+        <div className="flex items-center gap-3">
+          <StreakWidget currentStreak={currentStreak} highestStreak={highestStreak} />
+          <CoinWalletBadge coins={coins} />
+          <NetworkStatusBadge />
+        </div>
       </div>
 
-      {/* Student Banner & XP / Level Dashboard */}
+      {/* Student Banner & Gamified Level Progress Bar */}
       <div className="bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-700 text-white p-6 rounded-2xl shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-sm">
@@ -243,25 +277,13 @@ export const StudentDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* XP & Level Widget */}
-        <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 w-full md:w-auto justify-around md:justify-start">
-          <div className="text-center md:text-left">
-            <p className="text-xs text-sky-200 uppercase font-semibold flex items-center gap-1 justify-center md:justify-start">
-              <Zap className="w-3.5 h-3.5 text-amber-300" />
-              Total XP
-            </p>
-            <p className="text-2xl font-extrabold text-amber-300">{currentXp} XP</p>
-          </div>
-          <div className="h-8 w-px bg-white/20"></div>
-          <div className="text-center md:text-left">
-            <p className="text-xs text-sky-200 uppercase font-semibold flex items-center gap-1 justify-center md:justify-start">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-300" />
-              Level
-            </p>
-            <p className="text-2xl font-extrabold text-white">Level {currentLevel}</p>
-          </div>
+        <div className="w-full md:w-80">
+          <LevelProgressBar level={currentLevel} xp={currentXp} levelProgress={gamification?.levelProgress} />
         </div>
       </div>
+
+      {/* Interactive 6-Stage Learning Journey Map */}
+      <JourneyMap stages={journeyStages} />
 
       {/* Continue Learning Top Card */}
       <ContinueLearningCard onContinue={(lessonId) => navigate(`/student/lesson/${lessonId}`)} />
@@ -316,7 +338,7 @@ export const StudentDashboard: React.FC = () => {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{selectedModule.description}</p>
               </div>
 
-              {/* Sequential Activity Step Progression with Visual Status Badges */}
+              {/* Sequential Activity Step Progression */}
               <div className="space-y-3 pt-2">
                 {moduleActivities.map((act, index) => {
                   const prog = progressMap[act.id];
@@ -421,8 +443,10 @@ export const StudentDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Sidebar Widget: Leaderboard Card */}
+        {/* Sidebar Widgets: Daily Missions & Leaderboard */}
         <div className="space-y-6">
+          <DailyMissionsWidget missions={dailyMissions} onRewardClaimed={loadGamificationData} />
+
           <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
               <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -590,28 +614,23 @@ export const StudentDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Game Placeholder Modal */}
+      {/* Mini-Game Modal */}
       {activeGamePreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 text-center shadow-xl border border-gray-200 dark:border-gray-700 space-y-4">
-            <div className="w-16 h-16 mx-auto bg-amber-100 text-amber-600 rounded-full flex items-center justify-center">
-              <Gamepad2 className="w-8 h-8" />
-            </div>
-
-            <div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                {activeGamePreview.activityType} • Preview Mode
-              </span>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mt-2">{activeGamePreview.title}</h3>
-              <p className="text-xs text-gray-500 mt-1">{activeGamePreview.description}</p>
-            </div>
-
+          <div className="w-full max-w-2xl relative">
             <button
               onClick={() => setActiveGamePreview(null)}
-              className="w-full py-2.5 bg-sky-600 text-white text-xs font-bold rounded-xl hover:bg-sky-700 transition-colors"
+              className="absolute -top-3 -right-3 z-10 p-2 bg-white rounded-full shadow text-gray-600 hover:text-gray-900"
             >
-              Back to Learning Path
+              <X className="w-5 h-5" />
             </button>
+            <MiniGamePlayer
+              activityId={activeGamePreview.id}
+              activityTitle={activeGamePreview.title}
+              onComplete={() => {
+                loadGamificationData();
+              }}
+            />
           </div>
         </div>
       )}

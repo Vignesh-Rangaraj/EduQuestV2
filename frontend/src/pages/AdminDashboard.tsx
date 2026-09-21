@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../services/adminService';
 import { curriculumService } from '../services/curriculumService';
+import { gamificationService } from '../services/gamificationService';
 import { Teacher, Student, Parent, Classroom, CurriculumOverview, AdminAnalytics } from '../types';
 import {
   UserPlus,
@@ -17,7 +18,8 @@ import {
   BarChart3,
   TrendingUp,
   Zap,
-  CheckCircle
+  CheckCircle,
+  Trophy
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -27,6 +29,7 @@ export const AdminDashboard: React.FC = () => {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [curriculum, setCurriculum] = useState<CurriculumOverview | null>(null);
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
+  const [challengeAdminStats, setChallengeAdminStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -52,13 +55,14 @@ export const AdminDashboard: React.FC = () => {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [tData, sData, pData, cData, currData, analyticsData] = await Promise.all([
+      const [tData, sData, pData, cData, currData, analyticsData, cStats] = await Promise.all([
         adminService.getAllTeachers(),
         adminService.getAllStudents(),
         adminService.getAllParents(),
         adminService.getAllClassrooms(),
         curriculumService.getCurriculumOverview().catch(() => null),
-        adminService.getAnalytics().catch(() => null)
+        adminService.getAnalytics().catch(() => null),
+        gamificationService.getAdminChallengeStats().catch(() => null)
       ]);
       setTeachers(tData);
       setStudents(sData);
@@ -66,6 +70,7 @@ export const AdminDashboard: React.FC = () => {
       setClassrooms(cData);
       setCurriculum(currData);
       setAnalytics(analyticsData);
+      setChallengeAdminStats(cStats);
     } catch (err) {
       console.error('Failed to load admin data', err);
     } finally {
@@ -198,6 +203,30 @@ export const AdminDashboard: React.FC = () => {
             <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
               <p className="text-xs font-semibold text-gray-500 uppercase">Active Rate</p>
               <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">{analytics.activeRatePercentage}%</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Challenge Platform Analytics Summary */}
+      {challengeAdminStats && (
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-amber-200 dark:border-amber-800/40 shadow-sm space-y-3">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-amber-500" />
+            Platform Gamification & Challenge Analytics
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-amber-50/50 dark:bg-amber-950/30 p-3.5 rounded-xl border border-amber-100 dark:border-amber-900/40">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Total Platform Challenges</p>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{challengeAdminStats.totalPlatformChallenges ?? 0}</p>
+            </div>
+            <div className="bg-emerald-50/50 dark:bg-emerald-950/30 p-3.5 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Challenge Completion Rate</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{challengeAdminStats.challengeCompletionRate ?? 0}%</p>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-700/50 p-3.5 rounded-xl border border-gray-200 dark:border-gray-600">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Archived Challenges</p>
+              <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">{challengeAdminStats.archivedChallenges ?? 0}</p>
             </div>
           </div>
         </div>
