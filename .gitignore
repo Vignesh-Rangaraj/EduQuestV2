@@ -1,4 +1,7 @@
+<<<<<<< Updated upstream
 @"
+=======
+>>>>>>> Stashed changes
 # Maven build output
 backend/target/
 
@@ -17,5 +20,9 @@ frontend/dist/
 
 # OS files
 .DS_Store
+<<<<<<< Updated upstream
 Thumbs.db
 "@ | Out-File -Encoding utf8 .gitignore
+=======
+Thumbs.db
+>>>>>>> Stashed changes

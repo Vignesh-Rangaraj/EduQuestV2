@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/teacher/activities")
+@RequestMapping("/api/teacher")
 public class TeacherActivityController {
 
     private final ActivityService activityService;
@@ -30,13 +30,13 @@ public class TeacherActivityController {
                 .orElseThrow(() -> new RuntimeException("Teacher profile not found for user: " + user.getUsername()));
     }
 
-    @GetMapping
+    @GetMapping("/activities")
     public ResponseEntity<List<ActivityDto>> getMyActivities(Authentication authentication) {
         Teacher teacher = getTeacher(authentication);
         return ResponseEntity.ok(activityService.getActivitiesByTeacher(teacher.getId()));
     }
 
-    @PostMapping
+    @PostMapping("/activities")
     public ResponseEntity<ActivityDto> createActivity(@RequestBody CreateActivityRequest request, Authentication authentication) {
         Teacher teacher = getTeacher(authentication);
         if (request.getAssignedClassroomId() == null && teacher.getClassroom() != null) {
@@ -45,21 +45,34 @@ public class TeacherActivityController {
         return ResponseEntity.ok(activityService.createActivity(request, teacher.getId()));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/activities/{id}")
     public ResponseEntity<ActivityDto> updateActivity(@PathVariable Long id, @RequestBody CreateActivityRequest request, Authentication authentication) {
         Teacher teacher = getTeacher(authentication);
         return ResponseEntity.ok(activityService.updateActivity(id, request, teacher.getId()));
     }
 
-    @PostMapping("/{id}/publish")
+    @DeleteMapping("/activities/{id}")
+    public ResponseEntity<Void> deleteActivity(@PathVariable Long id, Authentication authentication) {
+        Teacher teacher = getTeacher(authentication);
+        activityService.deleteActivity(id, teacher.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/activities/{id}/publish")
     public ResponseEntity<ActivityDto> publishActivity(@PathVariable Long id, Authentication authentication) {
         Teacher teacher = getTeacher(authentication);
         return ResponseEntity.ok(activityService.publishActivity(id, teacher.getId()));
     }
 
-    @PostMapping("/{id}/archive")
-    public ResponseEntity<ActivityDto> archiveActivity(@PathVariable Long id, Authentication authentication) {
+    @PostMapping("/activities/{id}/unpublish")
+    public ResponseEntity<ActivityDto> unpublishActivity(@PathVariable Long id, Authentication authentication) {
         Teacher teacher = getTeacher(authentication);
-        return ResponseEntity.ok(activityService.archiveActivity(id, teacher.getId()));
+        return ResponseEntity.ok(activityService.unpublishActivity(id, teacher.getId()));
+    }
+
+    @PostMapping("/activities/{id}/duplicate")
+    public ResponseEntity<ActivityDto> duplicateActivity(@PathVariable Long id, Authentication authentication) {
+        Teacher teacher = getTeacher(authentication);
+        return ResponseEntity.ok(activityService.duplicateActivity(id, teacher.getId()));
     }
 }

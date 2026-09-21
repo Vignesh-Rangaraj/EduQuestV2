@@ -16,6 +16,10 @@ public interface ActivityRepository extends JpaRepository<Activity, Long> {
 
     List<Activity> findByStatus(ActivityStatus status);
 
+    List<Activity> findByModuleIdOrderByDisplayOrderAsc(Long moduleId);
+
+    List<Activity> findByModuleIdAndStatusOrderByDisplayOrderAsc(Long moduleId, ActivityStatus status);
+
     @Query("SELECT a FROM Activity a WHERE a.status = :status AND (a.assignedClassroomId IS NULL OR a.assignedClassroomId = :classroomId)")
     List<Activity> findPublishedForClassroom(@Param("classroomId") Long classroomId, @Param("status") ActivityStatus status);
 }

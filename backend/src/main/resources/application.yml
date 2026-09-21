@@ -18,3 +18,5 @@ app:
   jwt:
     secret: EduQuestV2SuperSecretKeyForJWTAuthTokenGenerationAndSigning9876543210
     expiration-ms: 86400000 # 24 hours
+  xp:
+    lesson-completion: 10

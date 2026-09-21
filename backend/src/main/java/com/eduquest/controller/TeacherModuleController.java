@@ -90,6 +90,21 @@ public class TeacherModuleController {
         return ResponseEntity.ok(quizService.saveQuestion(activityId, dto));
     }
 
+    @GetMapping("/{moduleId}/lessons")
+    public ResponseEntity<List<ActivityDto>> getLessonsForModule(@PathVariable Long moduleId) {
+        return ResponseEntity.ok(activityService.getLessonsForModule(moduleId, null));
+    }
+
+    @PostMapping("/{moduleId}/lessons")
+    public ResponseEntity<ActivityDto> createLessonInModule(
+            @PathVariable Long moduleId,
+            @RequestBody CreateActivityRequest request,
+            Authentication authentication) {
+        Teacher teacher = getTeacher(authentication);
+        request.setModuleId(moduleId);
+        return ResponseEntity.ok(activityService.createActivity(request, teacher.getId()));
+    }
+
     @PostMapping("/{activityId}/game-config")
     public ResponseEntity<GameConfigurationDto> saveGameConfig(@PathVariable Long activityId, @RequestBody GameConfigurationDto dto) {
         return ResponseEntity.ok(gameConfigService.saveGameConfig(activityId, dto.getJsonConfiguration()));

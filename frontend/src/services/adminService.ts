@@ -1,5 +1,5 @@
 import api from './api';
-import { Teacher, Student, Parent, Classroom } from '../types';
+import { Teacher, Student, Parent, Classroom, AdminAnalytics } from '../types';
 
 export const adminService = {
   createTeacher: async (data: { username: string; password: string; fullName: string; classroomId?: number }): Promise<Teacher> => {
@@ -38,4 +38,8 @@ export const adminService = {
     const res = await api.get<Classroom[]>('/admin/classrooms');
     return res.data;
   },
+  getAnalytics: async (): Promise<AdminAnalytics> => {
+    const res = await api.get<AdminAnalytics>('/admin/analytics');
+    return res.data;
+  }
 };

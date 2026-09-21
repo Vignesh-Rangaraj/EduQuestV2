@@ -9,6 +9,7 @@ import { LoginPage } from './pages/LoginPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { TeacherDashboard } from './pages/TeacherDashboard';
 import { StudentDashboard } from './pages/StudentDashboard';
+import { StudentLessonPlayer } from './pages/student/StudentLessonPlayer';
 import { ParentProfilePage } from './pages/ParentProfilePage';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -69,6 +70,17 @@ export const App: React.FC = () => {
                 <ProtectedRoute allowedRoles={['STUDENT', 'TEACHER', 'SUPER_ADMIN']}>
                   <AppLayout>
                     <StudentDashboard />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/student/lesson/:id"
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT', 'TEACHER', 'SUPER_ADMIN']}>
+                  <AppLayout>
+                    <StudentLessonPlayer />
                   </AppLayout>
                 </ProtectedRoute>
               }

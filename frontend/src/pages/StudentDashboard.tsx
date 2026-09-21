@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { studentService } from '../services/studentService';
 import { moduleService } from '../services/moduleService';
-import { quizService } from '../services/quizService';
 import { leaderboardService } from '../services/leaderboardService';
 import { offlineProgressRepository } from '../offline/offlineProgressRepository';
 import { syncService } from '../offline/syncService';
+import { ContinueLearningCard } from '../components/student/ContinueLearningCard';
 import {
   Student,
   Module,
@@ -30,22 +31,22 @@ import {
   X,
   HelpCircle,
   Zap,
-  TrendingUp
+  TrendingUp,
+  Circle
 } from 'lucide-react';
 
 export const StudentDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Student | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [moduleActivities, setModuleActivities] = useState<Activity[]>([]);
   const [progressMap, setProgressMap] = useState<Record<number, { completed: boolean; score: number; bestScore: number; synced: boolean }>>({});
-  const [moduleProgressList, setModuleProgressList] = useState<StudentModuleProgress[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardScope, setLeaderboardScope] = useState<'CLASSROOM' | 'SCHOOL'>('CLASSROOM');
   const [loading, setLoading] = useState(true);
 
   // Modal states
-  const [activeLesson, setActiveLesson] = useState<{ activity: Activity; content: LessonContent | null } | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<{ activity: Activity; questions: QuizQuestion[] } | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
   const [quizResult, setQuizResult] = useState<{ score: number; passed: boolean; correct: number; total: number } | null>(null);
@@ -58,15 +59,13 @@ export const StudentDashboard: React.FC = () => {
       const studentData = await studentService.getProfile();
       setProfile(studentData);
 
-      const [modList, lbList, modProg] = await Promise.all([
+      const [modList, lbList] = await Promise.all([
         moduleService.getStudentModules(),
-        leaderboardService.getLeaderboard(leaderboardScope),
-        moduleService.getStudentModuleProgress().catch(() => [])
+        leaderboardService.getLeaderboard(leaderboardScope)
       ]);
 
       setModules(modList);
       setLeaderboard(lbList);
-      setModuleProgressList(modProg);
 
       if (modList.length > 0) {
         const firstMod = modList[0];
@@ -139,12 +138,7 @@ export const StudentDashboard: React.FC = () => {
     if (!isUnlocked) return;
 
     if (act.activityType === 'LESSON') {
-      try {
-        const content = await moduleService.getLessonContent(act.id);
-        setActiveLesson({ activity: act, content });
-      } catch (e) {
-        setActiveLesson({ activity: act, content: { activityId: act.id, content: act.description || 'Lesson content is loading...' } });
-      }
+      navigate(`/student/lesson/${act.id}`);
     } else if (act.activityType === 'QUIZ') {
       try {
         const questions = await moduleService.getQuizQuestions(act.id);
@@ -155,44 +149,8 @@ export const StudentDashboard: React.FC = () => {
         alert('Could not load quiz questions.');
       }
     } else {
-      // Game types (MATCH_THE_FOLLOWING, SHOOT_THE_ANSWER, BALLOON_POP, TREASURE_HUNT) render Coming Soon / Preview
       setActiveGamePreview(act);
     }
-  };
-
-  const handleCompleteLesson = async () => {
-    if (!activeLesson || !profile?.id) return;
-
-    const act = activeLesson.activity;
-    const progressId = `${profile.id}-${act.id}`;
-    const completedAt = new Date().toISOString();
-    const xpReward = act.xpReward || 10;
-
-    await offlineProgressRepository.saveProgress({
-      id: progressId,
-      studentId: profile.id,
-      activityId: act.id,
-      score: 100,
-      completed: true,
-      completedAt,
-      synced: false
-    });
-
-    setProgressMap((prev) => ({
-      ...prev,
-      [act.id]: { completed: true, score: 100, bestScore: 100, synced: false }
-    }));
-
-    setProfile((prev) => prev ? { ...prev, xp: (prev.xp || 0) + xpReward, level: Math.floor(((prev.xp || 0) + xpReward) / 100) + 1 } : null);
-
-    await syncService.enqueueAction('COMPLETE_ACTIVITY', {
-      studentId: profile.id,
-      activityId: act.id,
-      score: 100,
-      completedAt
-    });
-
-    setActiveLesson(null);
   };
 
   const handleSubmitQuiz = async () => {
@@ -210,7 +168,7 @@ export const StudentDashboard: React.FC = () => {
 
     const total = questions.length;
     const score = total > 0 ? Math.round((correctCount / total) * 100) : 100;
-    const passed = score >= 50; // Quiz 50% passing threshold
+    const passed = score >= 50;
     const completedAt = new Date().toISOString();
     const act = activeQuiz.activity;
 
@@ -259,7 +217,6 @@ export const StudentDashboard: React.FC = () => {
     );
   }
 
-  // Calculate XP & Level
   const currentXp = profile?.xp || 0;
   const currentLevel = profile?.level || Math.floor(currentXp / 100) + 1;
 
@@ -305,6 +262,9 @@ export const StudentDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Continue Learning Top Card */}
+      <ContinueLearningCard onContinue={(lessonId) => navigate(`/student/lesson/${lessonId}`)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content Area: Subject Modules & Learning Path */}
@@ -356,48 +316,56 @@ export const StudentDashboard: React.FC = () => {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{selectedModule.description}</p>
               </div>
 
-              {/* Sequential Activity Step Progression */}
+              {/* Sequential Activity Step Progression with Visual Status Badges */}
               <div className="space-y-3 pt-2">
                 {moduleActivities.map((act, index) => {
                   const prog = progressMap[act.id];
                   const isCompleted = prog?.completed;
 
-                  // Sequential Unlocking Rule: Activity N+1 is locked until Activity N is completed
                   let isUnlocked = index === 0;
                   if (index > 0) {
                     const prevActivity = moduleActivities[index - 1];
                     isUnlocked = !!progressMap[prevActivity.id]?.completed;
                   }
 
+                  let statusBadge = 'LOCKED';
+                  if (isCompleted) {
+                    statusBadge = 'COMPLETED';
+                  } else if (isUnlocked) {
+                    statusBadge = index === 0 || progressMap[moduleActivities[index - 1]?.id]?.completed ? 'CURRENT' : 'NOT_STARTED';
+                  }
+
                   return (
                     <div
                       key={act.id}
                       className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${
-                        !isUnlocked
+                        statusBadge === 'LOCKED'
                           ? 'bg-gray-50 dark:bg-gray-850 border-gray-200 dark:border-gray-750 opacity-60'
-                          : isCompleted
+                          : statusBadge === 'COMPLETED'
                           ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40'
-                          : 'bg-white dark:bg-gray-800 border-sky-200 dark:border-sky-800/40 shadow-sm hover:border-sky-400'
+                          : statusBadge === 'CURRENT'
+                          ? 'bg-sky-50 dark:bg-sky-950/20 border-sky-300 dark:border-sky-700 shadow-sm'
+                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                       }`}
                     >
                       <div className="flex items-center space-x-3.5">
                         <div className={`p-3 rounded-xl ${
-                          !isUnlocked
+                          statusBadge === 'LOCKED'
                             ? 'bg-gray-200 dark:bg-gray-700 text-gray-400'
-                            : isCompleted
+                            : statusBadge === 'COMPLETED'
                             ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
-                            : 'bg-sky-100 dark:bg-sky-900/40 text-sky-600'
+                            : statusBadge === 'CURRENT'
+                            ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-600'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-500'
                         }`}>
-                          {!isUnlocked ? (
+                          {statusBadge === 'LOCKED' ? (
                             <Lock className="w-5 h-5" />
-                          ) : isCompleted ? (
+                          ) : statusBadge === 'COMPLETED' ? (
                             <CheckCircle className="w-5 h-5" />
-                          ) : act.activityType === 'QUIZ' ? (
-                            <HelpCircle className="w-5 h-5" />
-                          ) : act.activityType === 'LESSON' ? (
-                            <FileText className="w-5 h-5" />
+                          ) : statusBadge === 'CURRENT' ? (
+                            <Play className="w-5 h-5 fill-current" />
                           ) : (
-                            <Gamepad2 className="w-5 h-5" />
+                            <Circle className="w-5 h-5" />
                           )}
                         </div>
 
@@ -405,13 +373,15 @@ export const StudentDashboard: React.FC = () => {
                           <div className="flex items-center space-x-2">
                             <span className="text-xs font-bold text-gray-400">Step {index + 1}</span>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              act.activityType === 'QUIZ'
-                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
-                                : act.activityType === 'LESSON'
+                              statusBadge === 'COMPLETED'
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                : statusBadge === 'CURRENT'
+                                ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
+                                : statusBadge === 'LOCKED'
+                                ? 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                             }`}>
-                              {act.activityType}
+                              {statusBadge === 'COMPLETED' ? '✓ Completed' : statusBadge === 'CURRENT' ? '▶ Current' : statusBadge === 'LOCKED' ? '🔒 Locked' : '○ Not Started'}
                             </span>
                             <span className="text-[10px] font-bold text-amber-500">+{act.xpReward || 10} XP</span>
                           </div>
@@ -420,27 +390,20 @@ export const StudentDashboard: React.FC = () => {
                       </div>
 
                       <div className="flex items-center space-x-3">
-                        {isCompleted && (
-                          <div className="text-right hidden sm:block">
-                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">Completed</span>
-                            <span className="text-[10px] text-gray-400">Best: {prog.bestScore}%</span>
-                          </div>
-                        )}
-
                         <button
                           onClick={() => handleOpenActivity(act, isUnlocked)}
-                          disabled={!isUnlocked}
+                          disabled={statusBadge === 'LOCKED'}
                           className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-all ${
-                            !isUnlocked
+                            statusBadge === 'LOCKED'
                               ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
-                              : isCompleted
+                              : statusBadge === 'COMPLETED'
                               ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200'
                               : 'bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 shadow-sm'
                           }`}
                         >
-                          {!isUnlocked ? (
+                          {statusBadge === 'LOCKED' ? (
                             <span>Locked</span>
-                          ) : isCompleted ? (
+                          ) : statusBadge === 'COMPLETED' ? (
                             <span>Review</span>
                           ) : (
                             <>
@@ -458,7 +421,7 @@ export const StudentDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Sidebar Widget: 🏆 Top Students Leaderboard Card */}
+        {/* Sidebar Widget: Leaderboard Card */}
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
@@ -468,7 +431,6 @@ export const StudentDashboard: React.FC = () => {
               </h2>
             </div>
 
-            {/* Scope Switcher: My Class vs School Wide */}
             <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-xl text-xs font-bold">
               <button
                 onClick={() => setLeaderboardScope('CLASSROOM')}
@@ -492,7 +454,6 @@ export const StudentDashboard: React.FC = () => {
               </button>
             </div>
 
-            {/* Leaderboard Entries List */}
             <div className="space-y-2.5">
               {leaderboard.slice(0, 5).map((entry) => (
                 <div
@@ -521,40 +482,6 @@ export const StudentDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Interactive Lesson Modal */}
-      {activeLesson && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full p-6 shadow-xl border border-gray-200 dark:border-gray-700 space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
-              <div className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-sky-600" />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{activeLesson.activity.title}</h3>
-              </div>
-              <button onClick={() => setActiveLesson(null)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="prose dark:prose-invert text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line py-2">
-              {activeLesson.content?.content || activeLesson.activity.description}
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
-              <span className="text-xs text-amber-500 font-bold flex items-center gap-1">
-                <Zap className="w-4 h-4" />
-                Completion Reward: +{activeLesson.activity.xpReward || 10} XP
-              </span>
-              <button
-                onClick={handleCompleteLesson}
-                className="px-5 py-2.5 bg-sky-600 text-white text-xs font-bold rounded-xl hover:bg-sky-700 transition-colors shadow-sm"
-              >
-                Mark Lesson Completed
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Interactive 4-Option Quiz Runner Modal */}
       {activeQuiz && (
@@ -663,7 +590,7 @@ export const StudentDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Game Placeholder Modal (Match, Shoot, Balloon, Treasure) */}
+      {/* Game Placeholder Modal */}
       {activeGamePreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 text-center shadow-xl border border-gray-200 dark:border-gray-700 space-y-4">
@@ -677,14 +604,6 @@ export const StudentDashboard: React.FC = () => {
               </span>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mt-2">{activeGamePreview.title}</h3>
               <p className="text-xs text-gray-500 mt-1">{activeGamePreview.description}</p>
-            </div>
-
-            <div className="bg-gray-50 dark:bg-gray-750 p-4 rounded-xl text-xs text-gray-600 dark:text-gray-300 space-y-1">
-              <p className="font-bold flex items-center justify-center gap-1 text-amber-600">
-                <Sparkles className="w-4 h-4" />
-                Coming Soon in Phase 4 Game Rollout!
-              </p>
-              <p className="text-[11px] text-gray-400">Interactive game engines (drag & drop, animations, scoring) will activate in upcoming game engine releases.</p>
             </div>
 
             <button

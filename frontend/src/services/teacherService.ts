@@ -1,5 +1,5 @@
 import api from './api';
-import { Teacher, Student } from '../types';
+import { Teacher, Student, TeacherAnalytics } from '../types';
 
 export const teacherService = {
   getProfile: async (): Promise<Teacher> => {
@@ -8,6 +8,10 @@ export const teacherService = {
   },
   getAssignedStudents: async (): Promise<Student[]> => {
     const res = await api.get<Student[]>('/teacher/students');
+    return res.data;
+  },
+  getAnalytics: async (): Promise<TeacherAnalytics> => {
+    const res = await api.get<TeacherAnalytics>('/teacher/analytics');
     return res.data;
   }
 };

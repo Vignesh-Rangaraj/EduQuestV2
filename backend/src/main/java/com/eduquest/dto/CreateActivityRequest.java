@@ -12,6 +12,7 @@ public class CreateActivityRequest {
     private ActivityType activityType;
     private Long assignedClassroomId;
     private Long moduleId;
+    private Integer displayOrder;
     private Integer xpReward;
     private Long prerequisiteActivityId;
     private UnlockType unlockType;
@@ -44,6 +45,9 @@ public class CreateActivityRequest {
 
     public Long getModuleId() { return moduleId; }
     public void setModuleId(Long moduleId) { this.moduleId = moduleId; }
+
+    public Integer getDisplayOrder() { return displayOrder; }
+    public void setDisplayOrder(Integer displayOrder) { this.displayOrder = displayOrder; }
 
     public Integer getXpReward() { return xpReward; }
     public void setXpReward(Integer xpReward) { this.xpReward = xpReward; }

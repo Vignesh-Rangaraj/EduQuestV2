@@ -1,6 +1,7 @@
 package com.eduquest.controller;
 
 import com.eduquest.dto.*;
+import com.eduquest.service.AdminAnalyticsService;
 import com.eduquest.service.AdminService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +13,11 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final AdminAnalyticsService adminAnalyticsService;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, AdminAnalyticsService adminAnalyticsService) {
         this.adminService = adminService;
+        this.adminAnalyticsService = adminAnalyticsService;
     }
 
     @PostMapping("/teachers")
@@ -60,5 +63,10 @@ public class AdminController {
     @GetMapping("/classrooms")
     public ResponseEntity<List<ClassroomDto>> getAllClassrooms() {
         return ResponseEntity.ok(adminService.getAllClassrooms());
+    }
+
+    @GetMapping("/analytics")
+    public ResponseEntity<AdminAnalyticsDto> getAnalytics() {
+        return ResponseEntity.ok(adminAnalyticsService.getAdminAnalytics());
     }
 }

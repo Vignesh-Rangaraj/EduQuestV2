@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../services/adminService';
 import { curriculumService } from '../services/curriculumService';
-import { Teacher, Student, Parent, Classroom, CurriculumOverview } from '../types';
+import { Teacher, Student, Parent, Classroom, CurriculumOverview, AdminAnalytics } from '../types';
 import {
   UserPlus,
   Link,
@@ -14,7 +14,10 @@ import {
   BookOpen,
   Layers,
   Award,
-  BarChart3
+  BarChart3,
+  TrendingUp,
+  Zap,
+  CheckCircle
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -23,6 +26,7 @@ export const AdminDashboard: React.FC = () => {
   const [parents, setParents] = useState<Parent[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [curriculum, setCurriculum] = useState<CurriculumOverview | null>(null);
+  const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -48,18 +52,20 @@ export const AdminDashboard: React.FC = () => {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [tData, sData, pData, cData, currData] = await Promise.all([
+      const [tData, sData, pData, cData, currData, analyticsData] = await Promise.all([
         adminService.getAllTeachers(),
         adminService.getAllStudents(),
         adminService.getAllParents(),
         adminService.getAllClassrooms(),
-        curriculumService.getCurriculumOverview().catch(() => null)
+        curriculumService.getCurriculumOverview().catch(() => null),
+        adminService.getAnalytics().catch(() => null)
       ]);
       setTeachers(tData);
       setStudents(sData);
       setParents(pData);
       setClassrooms(cData);
       setCurriculum(currData);
+      setAnalytics(analyticsData);
     } catch (err) {
       console.error('Failed to load admin data', err);
     } finally {
@@ -130,7 +136,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-6xl mx-auto">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-sky-700 to-indigo-800 text-white p-6 rounded-2xl shadow-md">
         <div className="flex items-center gap-3">
@@ -157,33 +163,41 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Curriculum & Gamification Overview Metrics */}
-      {curriculum && (
+      {/* School Overview & Analytics Summary */}
+      {analytics && (
         <div className="space-y-4">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            Curriculum & Gamification Infrastructure Overview
+            School Analytics Overview
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Subjects</p>
-              <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{curriculum.totalSubjects}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">Schools</p>
+              <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{analytics.totalSchools || 1}</p>
             </div>
             <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Total Modules</p>
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{curriculum.totalModules}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">Teachers</p>
+              <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{analytics.totalTeachers}</p>
             </div>
             <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Published Modules</p>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{curriculum.publishedModules}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">Students</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{analytics.totalStudents}</p>
             </div>
             <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Total Activities</p>
-              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{curriculum.totalActivities}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">Modules</p>
+              <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{analytics.totalModules || 0} ({analytics.publishedModules || 0} Pub)</p>
             </div>
             <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Published Activities</p>
-              <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">{curriculum.publishedActivities}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">Lessons</p>
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{analytics.totalLessons || 0} ({analytics.publishedLessons || 0} Pub)</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Quizzes</p>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{analytics.totalQuizzes}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Active Rate</p>
+              <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">{analytics.activeRatePercentage}%</p>
             </div>
           </div>
         </div>

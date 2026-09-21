@@ -91,11 +91,12 @@ export interface CreateModulePayload {
 
 export interface CreateActivityPayload {
   title: string;
-  description: string;
+  description: String;
   subject: Subject;
   activityType: ActivityType;
   assignedClassroomId?: number;
   moduleId?: number;
+  displayOrder?: number;
   xpReward?: number;
 }
 
@@ -112,6 +113,8 @@ export interface Activity {
   unlockType?: UnlockType;
   unlockValue?: string;
   xpReward?: number;
+  statusBadge?: 'COMPLETED' | 'CURRENT' | 'LOCKED' | 'NOT_STARTED';
+  completed?: boolean;
   visibleToStudents?: boolean;
   aiGenerated?: boolean;
   aiGeneratedBy?: string;
@@ -143,7 +146,7 @@ export interface QuizQuestion {
 
 export interface SubmitQuizPayload {
   activityId: number;
-  userAnswers: Record<number, string>; // questionId -> selectedOption ("A", "B", "C", "D")
+  userAnswers: Record<number, string>;
 }
 
 export interface StudentQuizAttempt {
@@ -203,4 +206,108 @@ export interface CurriculumOverview {
   publishedModules: number;
   publishedActivities: number;
   modules: Module[];
+}
+
+export interface Achievement {
+  badgeCode: string;
+  badgeName: string;
+  description: string;
+  icon: string;
+  earned: boolean;
+  earnedAt?: string;
+}
+
+export interface SubjectProgress {
+  subject: string;
+  completedLessons: number;
+  totalLessons: number;
+  completedQuizzes: number;
+  totalQuizzes: number;
+  progressPercentage: number;
+}
+
+export interface StudentOverviewProgress {
+  studentId: number;
+  studentName: string;
+  totalXp: number;
+  level: number;
+  rank: number;
+  streakDays: number;
+  completedLessons: number;
+  completedQuizzes: number;
+  overallProgressPercentage: number;
+  subjectProgresses: SubjectProgress[];
+  recentActivities: StudentProgress[];
+  achievements: Achievement[];
+}
+
+export interface StudentPerformanceSummary {
+  studentId: number;
+  studentName: string;
+  totalXp: number;
+  level: number;
+  rank: number;
+  completedLessons: number;
+  completedQuizzes: number;
+  completionPercentage: number;
+  status: 'ACTIVE' | 'NEEDS_ATTENTION' | 'INACTIVE';
+}
+
+export interface TeacherAnalytics {
+  classroomId: number | null;
+  classroomName: string;
+  totalStudents: number;
+  averageXp: number;
+  averageCompletionRate: number;
+  activeStudentsCount: number;
+  studentPerformanceList: StudentPerformanceSummary[];
+  studentsNeedingAttention: StudentPerformanceSummary[];
+  subjectAnalytics: SubjectProgress[];
+}
+
+export interface ClassroomSummary {
+  id: number;
+  name: string;
+  grade: string;
+  studentCount: number;
+  averageXp: number;
+}
+
+export interface StudentLeaderboardSummary {
+  id: number;
+  name: string;
+  classroomName: string;
+  xp: number;
+  level: number;
+}
+
+export interface TeacherSummary {
+  id: number;
+  name: string;
+  classroomName: string;
+  subject: string;
+}
+
+export interface AdminAnalytics {
+  totalSchools: number;
+  totalTeachers: number;
+  totalStudents: number;
+  totalModules: number;
+  publishedModules: number;
+  totalLessons: number;
+  publishedLessons: number;
+  totalQuizzes: number;
+  activeRatePercentage: number;
+  topClassrooms: ClassroomSummary[];
+  topStudents: StudentLeaderboardSummary[];
+  topTeachers: TeacherSummary[];
+}
+
+export interface ContinueLearning {
+  moduleId: number | null;
+  moduleName: string;
+  lessonId: number | null;
+  lessonTitle: string;
+  progressPercentage: number;
+  nextLessonId?: number | null;
 }
